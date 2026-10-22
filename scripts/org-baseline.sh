@@ -7,9 +7,9 @@
 # Sets:
 #   - the default GITHUB_TOKEN of Actions workflows to read-only, and Actions may not approve PRs;
 #   - the "eggs-gd baseline" code security configuration (secret scanning with push protection,
-#     Dependabot alerts, dependency graph, private vulnerability reporting), attached to every
-#     PUBLIC repository and made the default for new public ones. Private repositories are left
-#     alone: these features cost money there.
+#     Dependabot alerts, dependency graph, CodeQL default setup, private vulnerability
+#     reporting), attached to every PUBLIC repository and made the default for new public ones.
+#     Private repositories are left alone: these features cost money there.
 #
 # Needs: gh with the admin:org scope:  gh auth refresh -h github.com -s admin:org
 set -euo pipefail
@@ -24,7 +24,7 @@ for arg in "$@"; do
 done
 
 config_name="eggs-gd baseline"
-config='{"name":"eggs-gd baseline","description":"Secret scanning with push protection, Dependabot alerts, dependency graph and private vulnerability reporting.","advanced_security":"enabled","secret_scanning":"enabled","secret_scanning_push_protection":"enabled","dependabot_alerts":"enabled","dependabot_security_updates":"disabled","dependency_graph":"enabled","code_scanning_default_setup":"not_set","private_vulnerability_reporting":"enabled","enforcement":"enforced"}'
+config='{"name":"eggs-gd baseline","description":"Secret scanning with push protection, Dependabot alerts, dependency graph, CodeQL default setup and private vulnerability reporting.","advanced_security":"enabled","secret_scanning":"enabled","secret_scanning_push_protection":"enabled","dependabot_alerts":"enabled","dependabot_security_updates":"disabled","dependency_graph":"enabled","code_scanning_default_setup":"enabled","private_vulnerability_reporting":"enabled","enforcement":"enforced"}'
 
 echo "== $org"
 echo "actions: default token read-only, workflows may not approve pull requests"
@@ -39,8 +39,25 @@ if [ -z "$id" ]; then
   id=$(echo "$config" | gh api -X POST "orgs/$org/code-security/configurations" --input - --jq .id)
   echo "configuration $id created"
 else
-  echo "configuration $id exists"
+  echo "$config" | gh api -X PATCH "orgs/$org/code-security/configurations/$id" --input - >/dev/null
+  echo "configuration $id updated"
 fi
-gh api -X POST "orgs/$org/code-security/configurations/$id/attach" -f scope=public >/dev/null
+# Changing a configuration starts an enablement across its repositories, and while that runs
+# GitHub answers 409 to attaching it. Wait for it, up to about five minutes.
+attach() {
+  local out
+  for _ in $(seq 20); do
+    if out=$(gh api -X POST "orgs/$org/code-security/configurations/$id/attach" -f scope=public 2>&1); then
+      return 0
+    fi
+    case "$out" in
+      *409*) echo "enablement in progress, waiting"; sleep 15 ;;
+      *) echo "$out" >&2; return 1 ;;
+    esac
+  done
+  echo "still in progress after 5 minutes: run this again later" >&2
+  return 1
+}
+attach
 gh api -X PUT "orgs/$org/code-security/configurations/$id/defaults" -f default_for_new_repos=public >/dev/null
 echo "attached to public repositories; default for new public repositories"
