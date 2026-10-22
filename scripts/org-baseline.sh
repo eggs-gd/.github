@@ -12,7 +12,6 @@
 #     alone: these features cost money there.
 #
 # Needs: gh with the admin:org scope:  gh auth refresh -h github.com -s admin:org
-# Not here (the API cannot do it): requiring 2FA, and verifying the Pages domains.
 set -euo pipefail
 
 org="eggs-gd"; dry=false

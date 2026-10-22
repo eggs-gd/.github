@@ -5,14 +5,12 @@ The basics for every project under `eggs-gd`. A repository's own `AGENTS.md` and
 
 ## Flow
 
-- **Sites and apps: trunk.** One branch from `main`, one pull request back, squash. No
+- **Trunk by default.** One branch from `main`, one pull request back, squash. No
   `develop`. The rules are enforced by the [ruleset](repo-baseline.md#the-ruleset), not by
   discipline.
-- **[Perceptrail](https://github.com/eggs-gd/Perceptrail): git flow.** `develop` and
-  `master`, `feature/*` squashed into `develop`, releases by fast-forward; hooks in
-  `.githooks` refuse direct commits to either long-lived branch. Its `AGENTS.md` has the
-  details; the fleet rule packs `flow/gitflow` and `flow/trunk` describe the same two
-  models as rules.
+- **Git flow when a project has releases to maintain.** `develop` and `master`,
+  `feature/*` squashed into `develop`, releases by fast-forward. Such a project says so in
+  its own `AGENTS.md` and enforces it with its own ruleset and hooks.
 - **Only the owner merges.** An agent opens the pull request, answers the review and
   stops. It does not merge, and it does not enable auto-merge.
 - **Pull request early, docs with it.** Open it as a draft at the first push. The docs
@@ -42,20 +40,13 @@ The basics for every project under `eggs-gd`. A repository's own `AGENTS.md` and
   in a browser.
 - Docs describe the current state. No history in them: that is what git is for.
 
-## Sites: SEO, analytics, consent
+## Analytics and consent
 
-The reference is [`eggs.gd-site/docs/seo.md`](https://github.com/eggs-gd/eggs.gd-site/blob/main/docs/seo.md):
-the head checklist, the URL rule (no trailing slash), the footer, the screenshot playbook.
-The short version:
-
-- **Analytics**: GA4 with Consent Mode v2, default `denied`; storage and measurement only
-  after the visitor allows it. Landings keep the choice in `localStorage.analyticsConsent`;
-  apps load gtag themselves on the web and use Firebase Analytics natively, with the
-  native defaults set to denied. Every event carries `consent: granted|denied`.
-- **Consent is asked once, in context**, with Allow and Decline equally easy. Never a wall.
-- **Privacy policy**: one per product, linked from the footer and from the consent text.
-- **Every site** has a canonical URL, a sitemap, `robots.txt`, Open Graph and structured
-  data, and links to its siblings by the roles in the footer table.
+- Analytics runs with Consent Mode v2 and the default `denied`: nothing is stored or
+  measured until the visitor allows it.
+- Consent is asked once, in context, with Allow and Decline equally easy. Never a wall.
+- Every event says whether it was sent with consent (`consent: granted|denied`).
+- A product has one privacy policy, linked from its footer and from the consent text.
 
 ## Dependencies and secrets
 

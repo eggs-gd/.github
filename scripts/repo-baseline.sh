@@ -68,7 +68,7 @@ JSON
 )
 
 echo "== $repo"
-echo "settings: delete branch on merge, update-branch button, wiki off, secret scanning + push protection, private vulnerability reporting"
+echo "settings: delete branch on merge, update-branch button, secret scanning + push protection, private vulnerability reporting"
 echo "ruleset:  \"$name\"${check:+, required check \"$check\" (strict=$strict)}"
 
 if $dry; then
@@ -77,7 +77,7 @@ if $dry; then
   exit 0
 fi
 
-gh repo edit "$repo" --delete-branch-on-merge --allow-update-branch --enable-wiki=false \
+gh repo edit "$repo" --delete-branch-on-merge --allow-update-branch \
   --enable-secret-scanning --enable-secret-scanning-push-protection >/dev/null
 gh api -X PUT "repos/$repo/private-vulnerability-reporting" >/dev/null
 

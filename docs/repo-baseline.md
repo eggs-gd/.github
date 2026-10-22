@@ -6,8 +6,7 @@ spec, so when one changes the other changes in the same pull request.
 
 Private repositories are outside the baseline: rulesets and code security are paid
 features there. When a private repository goes public, run the scripts on it.
-A repository that has no branches, pull requests or merges (the `core.eggs.gd` dataset)
-needs none of it.
+A repository that has no branches, pull requests or merges needs none of it.
 
 ## Repository
 
@@ -18,7 +17,6 @@ Per repository, by `repo-baseline.sh`:
 | Ruleset `main: PR, squash only`, on the default branch | see below | `main` is never pushed to directly, history stays linear |
 | Automatically delete head branches | on | merged branches do not pile up |
 | Allow updating the branch | on | the **Update branch** button, needed by strict checks |
-| Wiki | off | docs live in the repository, next to the code |
 | Secret scanning and push protection | on | a pushed key is caught before it is public |
 | Private vulnerability reporting | on | [SECURITY.md](../SECURITY.md) points to it |
 
@@ -37,15 +35,7 @@ Per repository, by `repo-baseline.sh`:
 The check name is the one GitHub lists on a pull request: `build` for a plain job, `build / build` when the
 job comes from a called workflow (copy it from the checks list). A required check that
 does not run on a pull request blocks that pull request forever, so a repository whose CI
-is filtered by path (`fleet.eggs.gd`) has no required check.
-
-### Current state
-
-| Repository | Required check |
-|---|---|
-| eggs.gd-site, firestart.dev, hdzp-site | `build` |
-| i-ching, diary | `build / build` |
-| fleet.eggs.gd, career-space, eggs.gd-kit, .github | none |
+only runs for some paths has no required check.
 
 ## Organization
 
@@ -58,17 +48,10 @@ By `org-baseline.sh`, which needs `gh auth refresh -h github.com -s admin:org`:
   public repository and the default for new public ones. Dependabot security updates and
   code scanning are left off for now (CodeQL is the next candidate).
 
-### By hand (the API cannot)
-
-- Require two-factor authentication: Organization → Settings → Authentication security.
-- Verify the domains used for GitHub Pages: Organization → Settings → Pages → Verified
-  and approved domains (a domain taken over by someone else cannot then serve our Pages).
-
 ## New public repository
 
 1. Create it in the organization with a `README`, a licence and a `.gitignore`.
-2. Give it an `AGENTS.md` (see [working rules](working-rules.md#agents)) and, for a site, the
-   [`seo.md`](https://github.com/eggs-gd/eggs.gd-site/blob/main/docs/seo.md) checklist.
+2. Give it an `AGENTS.md` (see [working rules](working-rules.md#agents)).
 3. Add a CI workflow that builds on pull requests, run it once, and note the job's name.
 4. `scripts/repo-baseline.sh <repo> --check "<job name>"`.
 5. The organization's security configuration and the default community files apply by themselves.
