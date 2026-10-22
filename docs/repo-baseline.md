@@ -44,9 +44,10 @@ By `org-baseline.sh`, which needs `gh auth refresh -h github.com -s admin:org`:
 - **Actions**: the default `GITHUB_TOKEN` is read-only, and workflows cannot approve pull
   requests. A workflow that needs more asks for it in its own `permissions:` block.
 - **Code security configuration `eggs-gd baseline`**: secret scanning with push protection,
-  Dependabot alerts, dependency graph, private vulnerability reporting. Attached to every
-  public repository and the default for new public ones. Dependabot security updates and
-  code scanning are left off for now (CodeQL is the next candidate).
+  Dependabot alerts, dependency graph, CodeQL (default setup), private vulnerability
+  reporting. Attached to every public repository and the default for new public ones.
+  CodeQL also watches the repositories we are not actively working on; for the active ones
+  it stays quiet. Dependabot security updates are left off.
 
 ## New public repository
 
