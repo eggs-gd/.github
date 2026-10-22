@@ -42,6 +42,22 @@ else
   echo "$config" | gh api -X PATCH "orgs/$org/code-security/configurations/$id" --input - >/dev/null
   echo "configuration $id updated"
 fi
-gh api -X POST "orgs/$org/code-security/configurations/$id/attach" -f scope=public >/dev/null
+# Changing a configuration starts an enablement across its repositories, and while that runs
+# GitHub answers 409 to attaching it. Wait for it, up to about five minutes.
+attach() {
+  local out
+  for _ in $(seq 20); do
+    if out=$(gh api -X POST "orgs/$org/code-security/configurations/$id/attach" -f scope=public 2>&1); then
+      return 0
+    fi
+    case "$out" in
+      *409*) echo "enablement in progress, waiting"; sleep 15 ;;
+      *) echo "$out" >&2; return 1 ;;
+    esac
+  done
+  echo "still in progress after 5 minutes: run this again later" >&2
+  return 1
+}
+attach
 gh api -X PUT "orgs/$org/code-security/configurations/$id/defaults" -f default_for_new_repos=public >/dev/null
 echo "attached to public repositories; default for new public repositories"
