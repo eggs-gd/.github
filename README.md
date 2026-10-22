@@ -9,6 +9,7 @@ where the high-level material lives: how the repositories are set up and how we 
 | How to report a vulnerability | [SECURITY.md](SECURITY.md) |
 | How a change goes in | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | Default pull request template | [PULL_REQUEST_TEMPLATE.md](PULL_REQUEST_TEMPLATE.md) |
+| The organization's public profile page | [profile/README.md](profile/README.md) |
 | Basic working rules (flow, agents, code and docs, analytics and consent) | [docs/working-rules.md](docs/working-rules.md) |
 | What the repository and organization baseline is, and the checklist for a new repository | [docs/repo-baseline.md](docs/repo-baseline.md) |
 | Apply the baseline to a repository | [scripts/repo-baseline.sh](scripts/repo-baseline.sh) |
