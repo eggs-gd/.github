@@ -10,7 +10,9 @@
 # The part between the markers is canonical: eggs-gd/.github, sonarqube/hooks/pre-commit.
 
 # --- sonar:begin
-set -a; [ ! -f .env ] || . ./.env; set +a
+env=.env
+[ -f "$env" ] || env="$(git rev-parse --path-format=absolute --git-common-dir)/../.env"
+set -a; [ ! -f "$env" ] || . "$env"; set +a
 if [ -n "${SONAR_HOST_URL:-}" ] && [ -n "${SONAR_TOKEN:-}" ] && command -v sonar >/dev/null 2>&1; then
 	sonar hook git-pre-commit || exit 1
 fi
@@ -19,7 +21,7 @@ if command -v golangci-lint >/dev/null 2>&1; then
 	modules=$(git diff --cached --name-only --diff-filter=ACMR -- '*.go' | while read -r f; do
 		d=$(dirname "$f")
 		while [ "$d" != . ] && [ ! -f "$d/go.mod" ]; do d=$(dirname "$d"); done
-		[ -f "$d/go.mod" ] && echo "$d"
+		if [ -f "$d/go.mod" ]; then echo "$d"; fi
 	done | sort -u)
 	for m in $modules; do
 		echo "pre-commit: golangci-lint in $m"

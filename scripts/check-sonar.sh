@@ -36,8 +36,10 @@ done
 
 [ -f "$repo/.claude/skills/sonar/SKILL.md" ] && ok ".claude/skills/sonar points at the skill" || bad ".claude/skills/sonar/SKILL.md is missing"
 
-for line in .scannerwork/ coverage.out golangci-lint.xml .env; do
-	grep -qxF "$line" "$repo/.gitignore" 2>/dev/null && ok ".gitignore has $line" || bad ".gitignore lacks $line"
+for line in '.scannerwork/' 'coverage.out' 'golangci-lint.xml' '.env'; do
+	# a path in a subdirectory (server/coverage.out) counts: the report is written there
+	pattern="(^|/)$(printf '%s' "$line" | sed 's/\./\\./g')\$"
+	grep -qE "$pattern" "$repo/.gitignore" 2>/dev/null && ok ".gitignore has $line" || bad ".gitignore lacks $line"
 done
 
 props=$repo/sonar-project.properties
