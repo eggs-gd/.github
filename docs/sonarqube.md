@@ -11,7 +11,8 @@ The files that must be identical in every repository are in [`sonarqube/`](../so
 | | |
 |---|---|
 | `sonar-project.properties` | the project, its sources and tests, the report paths; **no host, no token**. [Template](../sonarqube/templates/sonar-project.properties). The key is a stable name of the project (it does not change with the repository's name, so the history does not break). |
-| `make sonar` | tests with coverage, golangci-lint's report, the scan of the checkout, the quality gate. [Template](../sonarqube/templates/Makefile.sonar). Red gate: non-zero exit. `make sonar SONAR_GATE=false` sends the report without waiting for the gate. |
+| `make sonar` | tests with coverage, golangci-lint's report, the scan of the checkout, the quality gate. [Template](../sonarqube/templates/Makefile.sonar). Red gate: non-zero exit. `make sonar SONAR_GATE=false` sends the report without waiting for the gate. It leaves `.scannerwork/reports-head` (the commit its reports are of) for the next row. |
+| `make sonar-publish` | the scan again on those reports, **after the push has finished**: no tests, no lint, no gate. It refuses when the reports are not of this commit or the commit is not on the remote. |
 | `scripts/sonar-scope` | says what the checkout is: the main branch, the pull request (when `gh` finds an open one), or the branch. **Canonical**: [`sonarqube/scripts/sonar-scope`](../sonarqube/scripts/sonar-scope). `SONAR_BRANCH_ONLY` (default `develop`) names a branch that is never read as a pull request. |
 | `.golangci.yml` | golangci-lint v2; the same core everywhere ([template](../sonarqube/templates/golangci.yml)), the project's own exclusions below it, each with its reason. |
 | `.githooks/pre-commit`, `.githooks/pre-push` | the gate, below. The part between the `sonar:` markers is **canonical**: [`pre-commit`](../sonarqube/hooks/pre-commit), [`pre-push`](../sonarqube/hooks/pre-push). A repository with its own checks keeps them around it. |
@@ -32,9 +33,15 @@ Enable the hooks per checkout: `git config core.hooksPath .githooks`.
   changed (`COVERED` in the hook): the analysis of the pushed commit goes to the server, and a red
   quality gate stops the push. The report is on the server whatever the gate says, so the findings
   can be read and answered.
-- **After the pull request is opened,** `make sonar` once more: until then the analysis was of the
-  branch, and the pull request's comment and check come from an analysis made with its number.
+- **After every push, `make sonar-publish`.** The push's analysis is made while the commit is not on
+  GitHub yet, so the pull request's check cannot land on it: GitHub does not know the commit, and the
+  plugin does not report the failure (the analysis succeeds). Sending the scan again, once GitHub has
+  the commit, makes the check appear. The same second analysis is also the one made with the pull
+  request's number after it is opened; before that it was of the branch. `make sonar-publish` reuses
+  the reports of the first, so it costs the scanner, not the tests.
 - A report that has to reach the server whatever the gate says: `make sonar SONAR_GATE=false`.
+
+The pre-push hook cannot do the last step itself: git has no post-push hook, and at pre-push the commit is not on GitHub. It says so when it succeeds.
 
 ## The pull request comment
 
