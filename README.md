@@ -12,9 +12,11 @@ where the high-level material lives: how the repositories are set up and how we 
 | The organization's public profile page | [profile/README.md](profile/README.md) |
 | Basic working rules (flow, agents, code and docs, analytics and consent) | [docs/working-rules.md](docs/working-rules.md) |
 | How sites and apps are localized | [docs/localization.md](docs/localization.md) |
+| How repositories are analysed with SonarQube (the gate, the hooks, the skill, the PR icons) | [docs/sonarqube.md](docs/sonarqube.md) |
 | What the repository and organization baseline is, and the checklist for a new repository | [docs/repo-baseline.md](docs/repo-baseline.md) |
 | Apply the baseline to a repository | [scripts/repo-baseline.sh](scripts/repo-baseline.sh) |
 | Apply the baseline to the organization | [scripts/org-baseline.sh](scripts/org-baseline.sh) |
+| Check a repository's SonarQube setup against the standard | [scripts/check-sonar.sh](scripts/check-sonar.sh) |
 
 ## Applying the baseline
 

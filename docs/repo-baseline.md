@@ -29,6 +29,8 @@ Per repository, by `repo-baseline.sh`:
   to date before merging (**strict**, on by default). Strict is what makes parallel pull
   requests safe: the second one cannot merge until it has been rebuilt on top of the first.
   `--no-strict` turns it off.
+- `--security` also turns on Dependabot alerts and CodeQL for a repository the organization's
+  configuration does not cover (one of a personal account).
 - The repository admin role can bypass, **only through a pull request** (`bypass_mode: pull_request`),
   so a stuck pull request can be merged by the owner but a direct push is still refused.
 
