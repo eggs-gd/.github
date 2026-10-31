@@ -47,6 +47,7 @@ grep -q '^sonar.projectKey=' "$props" 2>/dev/null && ok "sonar-project.propertie
 grep -q 'sonar.go.golangci-lint.reportPaths' "$props" 2>/dev/null && ok "the golangci-lint report is imported" || bad "sonar-project.properties does not import the golangci-lint report"
 grep -q 'ruleKey=go:S3776' "$props" 2>/dev/null && ok "go:S3776 is scoped for tests" || bad "go:S3776 is not scoped for tests"
 
+grep -q 'env=\./\.env' "$repo/Makefile" 2>/dev/null && ok "the Makefile sources ./.env (a bare .env is looked up in PATH by sh)" || bad "the Makefile does not source ./.env"
 grep -q '^SONAR_GATE ?= true' "$repo/Makefile" 2>/dev/null && ok "make sonar takes SONAR_GATE" || bad "Makefile has no SONAR_GATE"
 grep -q 'sonar.qualitygate.wait=$(SONAR_GATE)' "$repo/Makefile" 2>/dev/null && ok "make sonar passes SONAR_GATE to the scanner" || bad "the scanner does not get SONAR_GATE"
 
