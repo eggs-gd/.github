@@ -1,0 +1,6 @@
+
+# SonarQube: the scanner's work directory, the reports `make sonar` writes, the token
+.scannerwork/
+coverage.out
+golangci-lint.xml
+.env
