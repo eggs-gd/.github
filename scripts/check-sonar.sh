@@ -48,7 +48,7 @@ grep -q 'sonar.go.golangci-lint.reportPaths' "$props" 2>/dev/null && ok "the gol
 grep -q 'ruleKey=go:S3776' "$props" 2>/dev/null && ok "go:S3776 is scoped for tests" || bad "go:S3776 is not scoped for tests"
 
 grep -q 'env=\./\.env' "$repo/Makefile" 2>/dev/null && ok "the Makefile sources ./.env (a bare .env is looked up in PATH by sh)" || bad "the Makefile does not source ./.env"
-grep -q '^sonar-publish:' "$repo/Makefile" 2>/dev/null && grep -q 'reports-head' "$repo/Makefile" 2>/dev/null && ok "make sonar-publish is there" || bad "the Makefile has no sonar-publish"
+grep -q '^sonar-publish:' "$repo/Makefile" 2>/dev/null && grep -q 'sonar-reports-head' "$repo/Makefile" 2>/dev/null && ok "make sonar-publish is there" || bad "the Makefile has no sonar-publish"
 grep -q '^SONAR_GATE ?= true' "$repo/Makefile" 2>/dev/null && ok "make sonar takes SONAR_GATE" || bad "Makefile has no SONAR_GATE"
 grep -q 'sonar.qualitygate.wait=$(SONAR_GATE)' "$repo/Makefile" 2>/dev/null && ok "make sonar passes SONAR_GATE to the scanner" || bad "the scanner does not get SONAR_GATE"
 
