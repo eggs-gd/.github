@@ -39,8 +39,11 @@ Enable the hooks per checkout: `git config core.hooksPath .githooks`.
   red gate fails the job, and the server's check and comment land on the pull request: the commit
   is on GitHub by then.
 
-The workflow needs the organization's secret `SONAR_TOKEN` and its variable `SONAR_HOST_URL`, the
-server's address as the runner sees it (`http://sonarqube:9000`, on the compose network).
+The server's address and the analysis token are the runner's own environment, not GitHub's: the
+address as the runner sees it (`http://sonarqube:9000`, on the compose network) and the token from
+the runner's `.env` on the server's host (the runner's README). Nothing of the server goes to
+GitHub, and a repository needs no secret. An organization on the Free plan could not give one to a
+private repository anyway: its secrets and variables reach public repositories only.
 
 A repository calls it like this; `go-version-file` and `node-dir` say which toolchains to set up:
 
@@ -57,7 +60,6 @@ jobs:
     uses: eggs-gd/.github/.github/workflows/sonarqube.yml@main
     with:
       go-version-file: go.mod
-    secrets: inherit
 ```
 
 ## The runner

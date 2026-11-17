@@ -29,10 +29,20 @@ A job asks for it with `runs-on: [self-hosted, sonar]`.
      - runner/compose.yml
    ```
 
-2. Get a registration token: **Organization settings → Actions → Runners → New self-hosted runner**.
+2. Give the runner the server's analysis token: in SonarQube, **My Account → Security → Generate
+   Tokens**, of the type *Global Analysis Token*. Put it in `runner/.env`, readable by root alone:
+
+   ```bash
+   printf 'SONAR_TOKEN=%s\n' '<the token>' > runner/.env && chmod 600 runner/.env
+   ```
+
+   The runner passes it to its jobs, with the server's address (`SONAR_HOST_URL`, set in
+   `compose.yml`). It never goes to GitHub.
+
+3. Get a registration token: **Organization settings → Actions → Runners → New self-hosted runner**.
    It is good for one hour and one registration.
 
-3. Register, once, **from the server's folder** — the one with its `compose.yml`, not `runner/`.
+4. Register, once, **from the server's folder** — the one with its `compose.yml`, not `runner/`.
    Compose names a project after the folder it runs in: from `runner/` it would be another project,
    with a volume of its own that the running service never sees.
 
@@ -44,15 +54,17 @@ A job asks for it with `runs-on: [self-hosted, sonar]`.
 
    The registration stays in the volume. The token is not needed again.
 
-4. Start it:
+5. Start it:
 
    ```bash
    docker compose up -d --build runner
    ```
 
+   After a change to `runner/.env`, recreate it the same way: a restart keeps the old environment.
+
    It shows as **Idle** under the organization's runners.
 
-5. In **Organization settings → Actions → Runner groups → Default**, keep public repositories
+6. In **Organization settings → Actions → Runner groups → Default**, keep public repositories
    **not allowed**. A public repository's pull request could run its code on this host.
 
 ## Keeping it

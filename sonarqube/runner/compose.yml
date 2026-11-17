@@ -9,6 +9,13 @@ services:
     container_name: sonarqube-runner
     environment:
       TZ: Europe/Kyiv
+      # The jobs inherit the runner's environment: the server as the runner sees it, and (env_file)
+      # its analysis token. Nothing of the server goes to GitHub, and every repository the runner
+      # serves gets it, a personal account's too.
+      SONAR_HOST_URL: http://sonarqube:9000
+    # runner/.env, next to this file, mode 600, never committed: SONAR_TOKEN=<an analysis token>.
+    # Only the token: the server's own .env (the database password) stays out of the jobs.
+    env_file: .env
     volumes:
       # The registration (.runner, .credentials), the jobs' checkouts (_work), the tool cache and the
       # Go, npm and scanner caches: all under the runner's home, kept across restarts and upgrades.

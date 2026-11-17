@@ -6,12 +6,13 @@
 #       uses: eggs-gd/.github/.github/workflows/sonarqube.yml@main
 #       with:
 #         go-version-file: go.mod
-#       secrets: inherit
 #
 # It runs on the runner next to the server (sonarqube/runner), the one place that reaches it, and
 # runs the repository's `make sonar`: tests with coverage, the lint report, the scan and the quality
 # gate. A red gate fails the job. What the analysis is of comes from the event: the pull request,
-# the default branch, or another branch.
+# the default branch, or another branch. The server's address and the analysis token come from the
+# runner's own environment, not from GitHub: no secret to pass, and none GitHub could hold for a
+# private repository of an organization on the Free plan.
 name: SonarQube
 
 on:
@@ -28,9 +29,6 @@ on:
       node-version:
         type: string
         default: '24'
-    secrets:
-      SONAR_TOKEN:
-        required: true
 
 permissions:
   contents: read
@@ -45,10 +43,14 @@ jobs:
     concurrency:
       group: sonarqube-${{ github.repository }}-${{ github.ref }}
       cancel-in-progress: true
-    env:
-      SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
+      - name: the runner's server
+        run: |
+          if [ -z "${SONAR_HOST_URL:-}" ] || [ -z "${SONAR_TOKEN:-}" ]; then
+            echo "::error::the runner has no SONAR_HOST_URL or SONAR_TOKEN (sonarqube/runner/README.md)"
+            exit 1
+          fi
+
       # The whole history: the analysis blames each line, and new code is new against the base.
       - uses: actions/checkout@v7
         with:
