@@ -1,8 +1,9 @@
 # SonarQube
 
-How the repositories of the organization (and the maintainer's own) are analysed with the
-maintainer's SonarQube. The server is on a LAN, so there is **no analysis in CI**: it runs on the
-maintainer's machine, and everywhere without `SONAR_HOST_URL` and `SONAR_TOKEN` it does nothing.
+How the repositories of the organization are analysed with the maintainer's SonarQube. The server is
+on a LAN, where GitHub's runners cannot reach it; a self-hosted runner next to it can (The runner).
+The analysis runs in a repository's workflow, on that runner, once a commit is on GitHub. A commit
+is checked before that, locally, by the pre-commit hook.
 The files that must be identical in every repository are in [`sonarqube/`](../sonarqube/);
 [`scripts/check-sonar.sh <checkout>`](../scripts/check-sonar.sh) says whether a repository's copy is.
 
@@ -10,15 +11,15 @@ The files that must be identical in every repository are in [`sonarqube/`](../so
 
 | | |
 |---|---|
+| a workflow calling [`sonarqube.yml`](../.github/workflows/sonarqube.yml) | the analysis: on a pull request, and on a push to the default branch (and a milestone branch, where there is one). It skips a change to the docs alone. Below. |
 | `sonar-project.properties` | the project, its sources and tests, the report paths; **no host, no token**. [Template](../sonarqube/templates/sonar-project.properties). The key is a stable name of the project (it does not change with the repository's name, so the history does not break). |
-| `make sonar` | tests with coverage, golangci-lint's report, the scan of the checkout, the quality gate. [Template](../sonarqube/templates/Makefile.sonar). Red gate: non-zero exit. `make sonar SONAR_GATE=false` sends the report without waiting for the gate. It leaves the commit its reports are of in `.git/sonar-reports-head` (not in `.scannerwork`: the scanner deletes that directory before every analysis) for the next row. |
-| `make sonar-publish` | the scan again on those reports, **after the push has finished**: no tests, no lint, no gate. It refuses when the working tree has uncommitted changes, when the reports are not of this commit, or when the commit is not on the remote. |
-| `scripts/sonar-scope` | says what the checkout is: the main branch, the pull request (when `gh` finds an open one), or the branch. **Canonical**: [`sonarqube/scripts/sonar-scope`](../sonarqube/scripts/sonar-scope). `SONAR_BRANCH_ONLY` (default `develop`) names a branch that is never read as a pull request. |
-| `.golangci.yml` | golangci-lint v2; the same core everywhere ([template](../sonarqube/templates/golangci.yml)), the project's own exclusions below it, each with its reason. |
-| `.githooks/pre-commit`, `.githooks/pre-push` | the gate, below. The part between the `sonar:` markers is **canonical**: [`pre-commit`](../sonarqube/hooks/pre-commit), [`pre-push`](../sonarqube/hooks/pre-push). A repository with its own checks keeps them around it. |
+| `make sonar` | tests with coverage, golangci-lint's report, the scan, the quality gate: what the workflow runs, and what runs by hand on a checkout to see the findings before a push. [Template](../sonarqube/templates/Makefile.sonar). Red gate: non-zero exit. `SONAR_GATE=false` sends the report without waiting for the gate. `SONAR_SCOPE` on the command line is what the analysis is of (the workflow sets it from the event); without it, `scripts/sonar-scope` says it for the checkout. |
+| `scripts/sonar-scope` | says what a checkout is: the main branch, the pull request (when `gh` finds an open one), or the branch. **Canonical**: [`sonarqube/scripts/sonar-scope`](../sonarqube/scripts/sonar-scope). `SONAR_BRANCH_ONLY` (default `develop`) names a branch that is never read as a pull request. |
+| `.golangci.yml` | golangci-lint v2; the same core everywhere ([template](../sonarqube/templates/golangci.yml)), the project's own exclusions below it, each with its reason. The core has `gocognit` at SonarQube's threshold, so a function too complex for `go:S3776` stops the commit. |
+| `.githooks/pre-commit` | the local gate, below. The part between the `sonar:` markers is **canonical**: [`pre-commit`](../sonarqube/hooks/pre-commit). A repository with its own checks keeps them around it. |
 | `.agents/skills/sonar/SKILL.md` | the agents' procedure. **Canonical**: [`sonarqube/skills/sonar`](../sonarqube/skills/sonar/SKILL.md), with a pointer in each adapter folder the repository uses ([adapters](../sonarqube/skills/sonar/adapters)). |
 | `.gitignore` | `.scannerwork/`, `coverage.out`, `golangci-lint.xml`, `.env` ([template](../sonarqube/templates/gitignore)). |
-| `CONTRIBUTING.md` | a "SonarQube (optional)" section: what to install, the two variables, the commands. |
+| `CONTRIBUTING.md` | a "SonarQube (optional)" section: what to install for the local gate and for `make sonar` by hand. |
 | `AGENTS.md` | a short pointer to the `sonar` skill. The rules themselves are in the skill. |
 
 Enable the hooks per checkout: `git config core.hooksPath .githooks`.
@@ -26,31 +27,47 @@ Enable the hooks per checkout: `git config core.hooksPath .githooks`.
 ## The gate: two steps
 
 - **On a commit, locally.** The pre-commit hook runs golangci-lint on every Go module that has a
-  staged `.go` file, and the secrets scan of the staged files (`sonar hook git-pre-commit`, when the
-  SonarQube CLI is installed). A finding stops the commit. Nothing goes to the server: a commit has
-  no hash yet, and a report of an uncommitted tree belongs to no commit.
-- **On a push, the server's.** The pre-push hook runs `make sonar` when code the analysis covers
-  changed (`COVERED` in the hook): the analysis of the pushed commit goes to the server, and a red
-  quality gate stops the push. The report is on the server whatever the gate says, so the findings
-  can be read and answered.
-- **After every push, `make sonar-publish`.** The push's analysis is made while the commit is not on
-  GitHub yet, so the pull request's check cannot land on it: GitHub does not know the commit, and the
-  plugin does not report the failure (the analysis succeeds). Sending the scan again, once GitHub has
-  the commit, makes the check appear. The same second analysis is also the one made with the pull
-  request's number after it is opened; before that it was of the branch. `make sonar-publish` reuses
-  the reports of the first, so it costs the scanner, not the tests.
-- A report that has to reach the server whatever the gate says: `make sonar SONAR_GATE=false`.
+  staged `.go` file, on the lines changed since `HEAD` (what the commit brings, not what was there),
+  and the secrets scan of the staged files (`sonar hook git-pre-commit`, when the SonarQube CLI is
+  installed and `SONAR_HOST_URL` and `SONAR_TOKEN` are set). A finding stops the commit. Nothing goes
+  to the server. A repository adds its own checks of the same kind around the canonical block: the
+  linters of its other languages, with the rules SonarQube applies to them.
+- **On GitHub, the server's.** The repository's workflow calls
+  [`sonarqube.yml`](../.github/workflows/sonarqube.yml) on a pull request and on a push to the
+  default branch. It runs on the runner: the toolchains, `make sonar` with the scope the event gives
+  (the pull request with its base, the default branch, or another branch), and the quality gate. A
+  red gate fails the job, and the server's check and comment land on the pull request: the commit
+  is on GitHub by then.
 
-The pre-push hook cannot do the last step itself: git has no post-push hook, and at pre-push the commit is not on GitHub. It says so when it succeeds.
+The workflow needs the organization's secret `SONAR_TOKEN` and its variable `SONAR_HOST_URL`, the
+server's address as the runner sees it (`http://sonarqube:9000`, on the compose network).
+
+A repository calls it like this; `go-version-file` and `node-dir` say which toolchains to set up:
+
+```yaml
+name: SonarQube
+on:
+  pull_request:
+    paths-ignore: ['**/*.md']
+  push:
+    branches: [main]
+    paths-ignore: ['**/*.md']
+jobs:
+  sonarqube:
+    uses: eggs-gd/.github/.github/workflows/sonarqube.yml@main
+    with:
+      go-version-file: go.mod
+    secrets: inherit
+```
 
 ## The runner
 
 A self-hosted GitHub Actions runner in the server's compose project,
-[`sonarqube/runner`](../sonarqube/runner/README.md): it connects out to GitHub and waits for jobs,
-so the analysis can run in Actions though the server is on the LAN. Registered on the organization,
-for its private repositories; a job asks for it with `runs-on: [self-hosted, sonar]`. The workflow that
-runs the analysis on it is the next change; until it is in, the analysis runs on the maintainer's
-machine as above.
+[`sonarqube/runner`](../sonarqube/runner/README.md). It connects out to GitHub and waits for jobs, so
+nothing reaches in. It is registered on the organization, for its private repositories; the workflow
+asks for it with `runs-on: [self-hosted, sonar]`. When it is down, the analysis waits in the queue;
+the job is not a required check, so nothing waits on it to merge. A repository of a personal account
+cannot use it: it needs a runner of its own (the runner's README).
 
 ## The pull request comment
 

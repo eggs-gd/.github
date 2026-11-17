@@ -1,0 +1,113 @@
+# The SonarQube analysis of a repository of the organization (docs/sonarqube.md), called from the
+# repository's own workflow:
+#
+#   jobs:
+#     sonarqube:
+#       uses: eggs-gd/.github/.github/workflows/sonarqube.yml@main
+#       with:
+#         go-version-file: go.mod
+#       secrets: inherit
+#
+# It runs on the runner next to the server (sonarqube/runner), the one place that reaches it, and
+# runs the repository's `make sonar`: tests with coverage, the lint report, the scan and the quality
+# gate. A red gate fails the job. What the analysis is of comes from the event: the pull request,
+# the default branch, or another branch.
+name: SonarQube
+
+on:
+  workflow_call:
+    inputs:
+      go-version-file:
+        description: The go.mod whose Go version the job sets up; none for a repository without Go.
+        type: string
+        default: ''
+      node-dir:
+        description: The folder of the package-lock.json the job installs; none for a repository without Node.
+        type: string
+        default: ''
+      node-version:
+        type: string
+        default: '24'
+    secrets:
+      SONAR_TOKEN:
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  SCANNER_VERSION: 8.3.1.16491
+  GOLANGCI_LINT_VERSION: v2.15.0
+
+jobs:
+  analysis:
+    runs-on: [self-hosted, sonar]
+    concurrency:
+      group: sonarqube-${{ github.repository }}-${{ github.ref }}
+      cancel-in-progress: true
+    env:
+      SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    steps:
+      # The whole history: the analysis blames each line, and new code is new against the base.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # No cache on GitHub: the runner's home keeps the toolchains and the module caches.
+      - if: inputs.go-version-file != ''
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: ${{ inputs.go-version-file }}
+          cache: false
+      - if: inputs.go-version-file != ''
+        name: golangci-lint
+        run: |
+          bin="$HOME/.local/bin"
+          if ! "$bin/golangci-lint" version 2>/dev/null | grep -q "${GOLANGCI_LINT_VERSION#v} "; then
+            curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/$GOLANGCI_LINT_VERSION/install.sh | sh -s -- -b "$bin" "$GOLANGCI_LINT_VERSION"
+          fi
+          echo "$bin" >> "$GITHUB_PATH"
+
+      - if: inputs.node-dir != ''
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ inputs.node-version }}
+      - if: inputs.node-dir != ''
+        run: npm ci
+        working-directory: ${{ inputs.node-dir }}
+
+      - name: sonar-scanner
+        run: |
+          home="$HOME/.sonar/sonar-scanner-$SCANNER_VERSION-linux-x64"
+          if [ ! -x "$home/bin/sonar-scanner" ]; then
+            zip="$RUNNER_TEMP/scanner.zip"
+            curl -sSfL -o "$zip" "https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-$SCANNER_VERSION-linux-x64.zip"
+            unzip -q -o "$zip" -d "$HOME/.sonar"
+          fi
+          echo "$home/bin" >> "$GITHUB_PATH"
+
+      # What the analysis is of: the pull request, the default branch, or another branch. scripts/sonar-scope
+      # finds it on a checkout; here the event says it.
+      - name: scope
+        id: scope
+        env:
+          PR: ${{ github.event.pull_request.number }}
+          HEAD_REF: ${{ github.head_ref }}
+          BASE_REF: ${{ github.base_ref }}
+          BRANCH: ${{ github.ref_name }}
+          DEFAULT: ${{ github.event.repository.default_branch }}
+        run: |
+          if [ -n "$PR" ]; then
+            scope="-Dsonar.pullrequest.key=$PR -Dsonar.pullrequest.branch=$HEAD_REF -Dsonar.pullrequest.base=$BASE_REF"
+          elif [ "$BRANCH" != "$DEFAULT" ]; then
+            scope="-Dsonar.branch.name=$BRANCH"
+          else
+            scope=""
+          fi
+          echo "scope=$scope" >> "$GITHUB_OUTPUT"
+
+      # SONAR_SCOPE on the command line, empty for the default branch: make sonar takes it as given.
+      - run: make sonar SONAR_SCOPE="$SCOPE"
+        env:
+          SCOPE: ${{ steps.scope.outputs.scope }}

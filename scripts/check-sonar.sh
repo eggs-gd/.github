@@ -26,13 +26,15 @@ block() { sed -n '/# --- sonar:begin/,/# --- sonar:end/p' "$1"; }
 same scripts/sonar-scope scripts/sonar-scope
 same skills/sonar/SKILL.md .agents/skills/sonar/SKILL.md
 
-for hook in pre-commit pre-push; do
-	f=$repo/.githooks/$hook
-	if [ ! -f "$f" ]; then bad ".githooks/$hook is missing"
-	elif [ "$(block "$f")" = "$(block "$here/hooks/$hook")" ] && [ -n "$(block "$f")" ]; then
-		ok ".githooks/$hook has the canonical sonar block"
-	else bad ".githooks/$hook: the sonar block differs from sonarqube/hooks/$hook"; fi
-done
+f=$repo/.githooks/pre-commit
+if [ ! -f "$f" ]; then bad ".githooks/pre-commit is missing"
+elif [ "$(block "$f")" = "$(block "$here/hooks/pre-commit")" ] && [ -n "$(block "$f")" ]; then
+	ok ".githooks/pre-commit has the canonical sonar block"
+else bad ".githooks/pre-commit: the sonar block differs from sonarqube/hooks/pre-commit"; fi
+
+# The analysis runs in the workflow, once the commit is on GitHub: a push runs none of it.
+grep -qs 'sonar:begin' "$repo/.githooks/pre-push" && bad ".githooks/pre-push still runs the analysis: the workflow does" || ok "no analysis on a push"
+grep -qs 'eggs-gd/.github/.github/workflows/sonarqube.yml@' "$repo"/.github/workflows/*.yml && ok "a workflow calls the SonarQube workflow" || bad "no workflow calls eggs-gd/.github/.github/workflows/sonarqube.yml"
 
 [ -f "$repo/.claude/skills/sonar/SKILL.md" ] && ok ".claude/skills/sonar points at the skill" || bad ".claude/skills/sonar/SKILL.md is missing"
 
@@ -48,7 +50,7 @@ grep -q 'sonar.go.golangci-lint.reportPaths' "$props" 2>/dev/null && ok "the gol
 grep -q 'ruleKey=go:S3776' "$props" 2>/dev/null && ok "go:S3776 is scoped for tests" || bad "go:S3776 is not scoped for tests"
 
 grep -q 'env=\./\.env' "$repo/Makefile" 2>/dev/null && ok "the Makefile sources ./.env (a bare .env is looked up in PATH by sh)" || bad "the Makefile does not source ./.env"
-grep -q '^sonar-publish:' "$repo/Makefile" 2>/dev/null && grep -q 'sonar-reports-head' "$repo/Makefile" 2>/dev/null && ok "make sonar-publish is there" || bad "the Makefile has no sonar-publish"
+grep -q 'origin SONAR_SCOPE' "$repo/Makefile" 2>/dev/null && ok "make sonar takes SONAR_SCOPE from the workflow" || bad "the Makefile does not take SONAR_SCOPE"
 grep -q '^SONAR_GATE ?= true' "$repo/Makefile" 2>/dev/null && ok "make sonar takes SONAR_GATE" || bad "Makefile has no SONAR_GATE"
 grep -q 'sonar.qualitygate.wait=$(SONAR_GATE)' "$repo/Makefile" 2>/dev/null && ok "make sonar passes SONAR_GATE to the scanner" || bad "the scanner does not get SONAR_GATE"
 

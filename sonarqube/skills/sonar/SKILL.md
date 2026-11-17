@@ -1,37 +1,33 @@
 ---
 name: sonar
-description: Run, read and answer the local SonarQube analysis. Use before a commit and a push when SONAR_HOST_URL and SONAR_TOKEN are set, after opening a pull request, when the quality gate is red, or when asked about a SonarQube finding.
+description: Read and answer the SonarQube analysis, and pass its local gate. Use when a commit is stopped by the pre-commit hook, after opening or pushing to a pull request, when the quality gate is red, or when asked about a SonarQube finding.
 ---
 
-# SonarQube (the maintainer's local server)
+# SonarQube (the maintainer's server)
 
-The server is on the maintainer's LAN: there is no analysis in CI. Everything here is
-for a checkout where `SONAR_HOST_URL` and `SONAR_TOKEN` are set (the environment or a
-git-ignored `.env`; a worktree uses the main checkout's). **Without them, skip all of
-it**: it is a check on the maintainer's machine, not a requirement for anyone else.
+The server is on the maintainer's LAN. The analysis runs in the repository's SonarQube workflow, on
+the self-hosted runner next to the server, once a commit is on GitHub; a commit is checked before
+that by the pre-commit hook. `SONAR_HOST_URL` and `SONAR_TOKEN` (the environment or a git-ignored
+`.env`; a worktree uses the main checkout's) are only needed for `make sonar` by hand and for the
+hook's secrets scan. **Without them, skip those**: the workflow still analyses the pull request.
 
 The standard: <https://github.com/eggs-gd/.github/blob/main/docs/sonarqube.md>.
 
 ## The flow
 
-1. **Commit.** The pre-commit hook is the local gate: golangci-lint on the Go modules
-   with staged files, and the secrets scan of the staged files when the `sonar` CLI is
-   installed. A finding stops the commit. Nothing goes to the server.
-2. **Push.** The pre-push hook runs `make sonar`: tests with coverage, the lint
-   report, the scan of the pushed commit and the quality gate. The report goes to the
-   server first; a red gate then stops the push. Read it, fix or answer, commit, push.
-3. **After every push, when it has finished**, run `make sonar-publish`. The push's
-   analysis was made while the commit was not on GitHub yet, so the check (the status
-   on the commit) could not land on it: the plugin does not say so, the analysis just
-   succeeds. `make sonar-publish` sends the scan again, on the reports `make sonar` wrote
-   for this commit (no tests, no lint), now that GitHub knows the commit. Before the
-   pull request is opened that analysis is of the branch; the pull request's comment
-   and check come from an analysis made with its number (`scripts/sonar-scope` finds it),
-   so it matters most right after the pull request is opened. It stops if the commit is
-   not on the remote, if the tree has uncommitted changes, or if the reports are not of this
-   commit: then commit, push, or `make sonar` first.
-4. **Publish without waiting for the gate**, when a report has to reach the server
-   whatever the gate says: `make sonar SONAR_GATE=false`.
+1. **Commit.** The pre-commit hook is the local gate. It runs golangci-lint on the lines a commit
+   changes in the Go modules with staged files, with `gocognit` at SonarQube's complexity threshold.
+   It runs the secrets scan of the staged files when the `sonar` CLI is installed, and the
+   repository's own checks around them. A finding stops the commit. Fix it there: it is what the
+   gate would have turned down.
+2. **Push.** Nothing runs on a push. The SonarQube workflow runs on the pull request: the tests with
+   coverage, the lint report, the scan of the pull request against its base, and the quality gate.
+   A red gate fails the job, and the server's comment and check land on the pull request.
+3. **Read the result** on the pull request: the job, and the server's comment with the gate and the
+   counts. A red gate is fixed or answered (below), committed, pushed: the workflow runs again.
+4. **By hand, to see the findings before a push**, when `SONAR_HOST_URL` and `SONAR_TOKEN` are set:
+   `make sonar` (the scope comes from `scripts/sonar-scope`), or `make sonar SONAR_GATE=false` to
+   send the report without waiting for the gate.
 
 ## Reading what it found
 
@@ -57,4 +53,4 @@ The standard: <https://github.com/eggs-gd/.github/blob/main/docs/sonarqube.md>.
 - Run `sonar integrate` (it downloads a binary and can overwrite the hooks).
 - Run `sonar-scanner` directly: without the arguments from `scripts/sonar-scope` a
   feature branch is published as the main branch. Use `make sonar`.
-- Commit or push with `--no-verify`. If it is asked for, say so in the message.
+- Commit with `--no-verify`. If it is asked for, say so in the message.

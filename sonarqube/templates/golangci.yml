@@ -5,8 +5,10 @@ run:
   relative-path-mode: gitroot # report paths from the repository's root, as Sonar looks them up
 linters:
   default: standard # errcheck, govet, ineffassign, staticcheck, unused
-  enable: [bodyclose, errorlint, gocritic, misspell, nilerr, unconvert]
+  enable: [bodyclose, errorlint, gocognit, gocritic, misspell, nilerr, unconvert]
   settings:
+    gocognit:
+      min-complexity: 15 # SonarQube's go:S3776, at its threshold: caught on a commit, not at the gate
     errcheck:
       exclude-functions: # cleanup: there is nowhere to pass the error
         - (io.Closer).Close
@@ -18,3 +20,5 @@ linters:
       - path: _test\.go
         linters: [errcheck]
         text: "\\.Close` is not checked"
+      - path: _test\.go # a table of cases reads as one function, as go:S3776 is scoped for tests
+        linters: [gocognit]
