@@ -41,7 +41,7 @@ Enable the hooks per checkout: `git config core.hooksPath .githooks`.
 
 The server's address and the analysis token are the runner's own environment, not GitHub's: the
 address as the runner sees it (`http://sonarqube:9000`, on the compose network) and the token from
-the runner's `.env` on the server's host (the runner's README). Nothing of the server goes to
+the runner's `.env` on the server's host, the same file a checkout uses for `make sonar` (the runner's README). Nothing of the server goes to
 GitHub, and a repository needs no secret. An organization on the Free plan could not give one to a
 private repository anyway: its secrets and variables reach public repositories only.
 

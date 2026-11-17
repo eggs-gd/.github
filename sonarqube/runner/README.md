@@ -29,15 +29,15 @@ A job asks for it with `runs-on: [self-hosted, sonar]`.
      - runner/compose.yml
    ```
 
-2. Give the runner the server's analysis token: in SonarQube, **My Account → Security → Generate
-   Tokens**, of the type *Global Analysis Token*. Put it in `runner/.env`, readable by root alone:
+2. Put the `.env` a checkout uses for `make sonar` into `runner/.env`, readable by root alone
+   (`chmod 600`), with the server's address as the runner sees it:
 
    ```bash
-   printf 'SONAR_TOKEN=%s\n' '<the token>' > runner/.env && chmod 600 runner/.env
+   SONAR_HOST_URL=http://sonarqube:9000
+   SONAR_TOKEN=<an analysis token>
    ```
 
-   The runner passes it to its jobs, with the server's address (`SONAR_HOST_URL`, set in
-   `compose.yml`). It never goes to GitHub.
+   The runner passes it to its jobs. It never goes to GitHub.
 
 3. Get a registration token: **Organization settings → Actions → Runners → New self-hosted runner**.
    It is good for one hour and one registration.
