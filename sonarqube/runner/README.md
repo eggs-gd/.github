@@ -15,8 +15,10 @@ A job asks for it with `runs-on: [self-hosted, sonar]`.
 - `vm.max_map_count` of at least 524288, set on the Proxmox host: the server's Elasticsearch needs it.
 - Memory for the server and a job at once: 3–4 GB for SonarQube and PostgreSQL, 2–3 GB for a job at
   its peak (Go tests with `-race`, the front's tests, the scanner).
-- 20–30 GB of disk for the runner's volume: a checkout per repository, the Go and Node toolchains,
-  the Go, npm and scanner caches.
+- 20–30 GB of free disk. The volume starts with a copy of the runner's files from the image (about
+  1 GB with the image itself), then grows with a checkout per repository, the Go and Node toolchains,
+  and the Go, npm and scanner caches. A disk that fills while the volume is first copied leaves it
+  half made (`./run.sh: no such file or directory`): remove the volume and start again.
 
 ## Set up
 
@@ -30,7 +32,9 @@ A job asks for it with `runs-on: [self-hosted, sonar]`.
 2. Get a registration token: **Organization settings → Actions → Runners → New self-hosted runner**.
    It is good for one hour and one registration.
 
-3. Register, once:
+3. Register, once, **from the server's folder** — the one with its `compose.yml`, not `runner/`.
+   Compose names a project after the folder it runs in: from `runner/` it would be another project,
+   with a volume of its own that the running service never sees.
 
    ```bash
    docker compose run --rm runner ./config.sh --unattended --replace \
