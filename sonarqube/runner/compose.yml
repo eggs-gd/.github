@@ -1,0 +1,21 @@
+# The runner, next to the SonarQube server: included by the server's compose file
+#   include:
+#     - runner/compose.yml
+# so the jobs reach the server by its service name on the compose network (http://sonarqube:9000),
+# not by an address on the LAN. See README.md for the one-time registration.
+services:
+  runner:
+    build: .
+    container_name: sonarqube-runner
+    environment:
+      TZ: Europe/Kyiv
+    volumes:
+      # The registration (.runner, .credentials), the jobs' checkouts (_work), the tool cache and the
+      # Go, npm and scanner caches: all under the runner's home, kept across restarts and upgrades.
+      - runner_home:/home/runner
+    # No docker.sock: the analysis jobs need no Docker, and the socket would give any workflow root
+    # on the host.
+    restart: unless-stopped
+
+volumes:
+  runner_home:

@@ -43,6 +43,15 @@ Enable the hooks per checkout: `git config core.hooksPath .githooks`.
 
 The pre-push hook cannot do the last step itself: git has no post-push hook, and at pre-push the commit is not on GitHub. It says so when it succeeds.
 
+## The runner
+
+A self-hosted GitHub Actions runner in the server's compose project,
+[`sonarqube/runner`](../sonarqube/runner/README.md): it connects out to GitHub and waits for jobs,
+so the analysis can run in Actions though the server is on the LAN. Registered on the organization,
+for its private repositories; a job asks for it with `runs-on: [self-hosted, sonar]`. The workflow that
+runs the analysis on it is the next change; until it is in, the analysis runs on the maintainer's
+machine as above.
+
 ## The pull request comment
 
 The comments are written by the community branch plugin, with icons it serves from the server. On a
