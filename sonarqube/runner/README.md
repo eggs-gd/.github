@@ -5,8 +5,8 @@ project. The server is on a LAN and GitHub cannot reach it. The runner can: it c
 over HTTPS and waits there for a job (a long-poll), so nothing has to reach in. A job it takes runs on
 this host and reaches the server by its service name, `http://sonarqube:9000`.
 
-It is registered once, on the organization, so every private repository of `eggs-gd` can use it.
-A job asks for it with `runs-on: [self-hosted, sonar]`.
+It is registered once, on the organization, so the repositories of `eggs-gd` that its runner group
+allows can use it, public ones included (step 6). A job asks for it with `runs-on: [self-hosted, sonar]`.
 
 ## What the host needs
 
@@ -64,8 +64,16 @@ A job asks for it with `runs-on: [self-hosted, sonar]`.
 
    It shows as **Idle** under the organization's runners.
 
-6. In **Organization settings → Actions → Runner groups → Default**, keep public repositories
-   **not allowed**. A public repository's pull request could run its code on this host.
+6. In **Organization settings → Actions → Runner groups**, say which repositories may use it. For a
+   public repository use a group of **selected repositories**, not "all": a pull request from a
+   fork runs its code on this host. In each public repository set **Settings → Actions → General →
+   Fork pull request workflows → Require approval for all outside collaborators**, and read the
+   diff (the Makefile and `package.json` too) before approving a run. The job's own
+   `if: github.repository_owner == 'eggs-gd'` is not a guard against a pull request: the pull
+   request can change the workflow file.
+
+   The runner keeps the checkout and the caches of every repository that used it. If the public
+   repositories' code should not sit next to the private ones, give them a runner of their own.
 
 ## Keeping it
 
