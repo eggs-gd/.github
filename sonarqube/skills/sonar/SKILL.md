@@ -15,14 +15,18 @@ The standard: <https://github.com/eggs-gd/.github/blob/main/docs/sonarqube.md>.
 
 ## The flow
 
-1. **Commit.** The pre-commit hook is the local gate. It runs golangci-lint on the lines a commit
-   changes in the Go modules with staged files, with `gocognit` at SonarQube's complexity threshold.
-   It runs the secrets scan of the staged files when the `sonar` CLI is installed, and the
-   repository's own checks around them. A finding stops the commit. Fix it there: it is what the
-   gate would have turned down.
-2. **Push.** Nothing runs on a push. The SonarQube workflow runs on the pull request: the tests with
-   coverage, the lint report, the scan of the pull request against its base, and the quality gate.
-   A red gate fails the job, and the server's comment and check land on the pull request.
+1. **Commit.** The pre-commit hook is the local gate. It runs the secrets scan of the staged files
+   when the `sonar` CLI is installed, and the repository's own checks around it. In a repository
+   with Go modules it also runs golangci-lint on the lines a commit changes in the modules with
+   staged files, with `gocognit` at SonarQube's complexity threshold. Without Go there is no local
+   lint: the rules (complexity included) are checked by the server only. A finding stops the
+   commit. Fix it there: it is what the gate would have turned down.
+2. **Push.** The SonarQube workflow runs on a pull request and on a push to the default branch
+   (and a milestone branch, where there is one); a change to the docs alone is skipped. A branch
+   push without a pull request runs nothing. On a pull request: the tests with coverage, the lint
+   report where there is one, the scan of the pull request against its base, and the quality gate.
+   A red gate fails the job, and the server's comment and check land on the pull request. The push
+   to the default branch is the analysis the next pull requests are compared against.
 3. **Read the result** on the pull request: the job, and the server's comment with the gate and the
    counts. A red gate is fixed or answered (below), committed, pushed: the workflow runs again.
 4. **By hand, to see the findings before a push**, when `SONAR_HOST_URL` and `SONAR_TOKEN` are set:
@@ -39,7 +43,8 @@ The standard: <https://github.com/eggs-gd/.github/blob/main/docs/sonarqube.md>.
 - Fix it. A complexity or duplication finding is fixed by splitting the code, not by
   silencing the rule.
 - A finding that is wrong for that line is answered **on the line**, with the reason:
-  `// NOSONAR <why>`, or `//nolint:<linter> // <why>` for golangci-lint.
+  `// NOSONAR <why>` (put on the flagged line itself), or `//nolint:<linter> // <why>` for
+  golangci-lint in Go.
 - A rule that is wrong for a whole class of files is scoped in `sonar-project.properties`
   (`sonar.issue.ignore.multicriteria`), with the reason in a comment next to it.
 - The pull request's description says what the gate showed and how each remaining
