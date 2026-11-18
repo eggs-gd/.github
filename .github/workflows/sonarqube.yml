@@ -13,6 +13,9 @@
 # the default branch, or another branch. The server's address and the analysis token come from the
 # runner's own environment, not from GitHub: no secret to pass, and none GitHub could hold for a
 # private repository of an organization on the Free plan.
+#
+# Only for a repository of the organization (the `if` below). A fork lives in another account and
+# cannot reach the runner anyway; the condition keeps its copy of this workflow from queueing for ever.
 name: SonarQube
 
 on:
@@ -39,6 +42,7 @@ env:
 
 jobs:
   analysis:
+    if: github.repository_owner == 'eggs-gd'
     runs-on: [self-hosted, sonar]
     concurrency:
       group: sonarqube-${{ github.repository }}-${{ github.ref }}

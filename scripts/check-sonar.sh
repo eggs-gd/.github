@@ -23,6 +23,11 @@ same() { # <canonical file> <file in the repo>
 
 block() { sed -n '/# --- sonar:begin/,/# --- sonar:end/p' "$1"; }
 
+# What the repository is written in decides which of the checks below apply: Go (a go.mod), Node (a
+# package-lock.json), or both, as in Kongui.
+has_go=$(find "$repo" -maxdepth 3 -name go.mod -not -path '*/node_modules/*' -print -quit 2>/dev/null)
+has_node=$(find "$repo" -maxdepth 3 -name package-lock.json -not -path '*/node_modules/*' -print -quit 2>/dev/null)
+
 same scripts/sonar-scope scripts/sonar-scope
 same skills/sonar/SKILL.md .agents/skills/sonar/SKILL.md
 
@@ -38,7 +43,10 @@ grep -qs 'eggs-gd/.github/.github/workflows/sonarqube.yml@' "$repo"/.github/work
 
 [ -f "$repo/.claude/skills/sonar/SKILL.md" ] && ok ".claude/skills/sonar points at the skill" || bad ".claude/skills/sonar/SKILL.md is missing"
 
-for line in '.scannerwork/' 'coverage.out' 'golangci-lint.xml' '.env'; do
+lines=".scannerwork/ .env"
+[ -n "$has_go" ] && lines="$lines coverage.out golangci-lint.xml"
+[ -n "$has_node" ] && lines="$lines coverage/"
+for line in $lines; do
 	# a path in a subdirectory (server/coverage.out) counts: the report is written there
 	pattern="(^|/)$(printf '%s' "$line" | sed 's/\./\\./g')\$"
 	grep -qE "$pattern" "$repo/.gitignore" 2>/dev/null && ok ".gitignore has $line" || bad ".gitignore lacks $line"
@@ -46,8 +54,13 @@ done
 
 props=$repo/sonar-project.properties
 grep -q '^sonar.projectKey=' "$props" 2>/dev/null && ok "sonar-project.properties has a project key" || bad "sonar-project.properties has no project key"
-grep -q 'sonar.go.golangci-lint.reportPaths' "$props" 2>/dev/null && ok "the golangci-lint report is imported" || bad "sonar-project.properties does not import the golangci-lint report"
-grep -q 'ruleKey=go:S3776' "$props" 2>/dev/null && ok "go:S3776 is scoped for tests" || bad "go:S3776 is not scoped for tests"
+if [ -n "$has_go" ]; then
+	grep -q 'sonar.go.golangci-lint.reportPaths' "$props" 2>/dev/null && ok "the golangci-lint report is imported" || bad "sonar-project.properties does not import the golangci-lint report"
+fi
+if [ -n "$has_node" ]; then
+	grep -q 'sonar.javascript.lcov.reportPaths' "$props" 2>/dev/null && ok "the lcov report is imported" || bad "sonar-project.properties does not import the lcov report"
+fi
+grep -qE 'ruleKey=[a-z]+:S3776' "$props" 2>/dev/null && ok "S3776 is scoped for tests" || bad "S3776 is not scoped for tests"
 
 grep -q 'env=\./\.env' "$repo/Makefile" 2>/dev/null && ok "the Makefile sources ./.env (a bare .env is looked up in PATH by sh)" || bad "the Makefile does not source ./.env"
 grep -q 'origin SONAR_SCOPE' "$repo/Makefile" 2>/dev/null && ok "make sonar takes SONAR_SCOPE from the workflow" || bad "the Makefile does not take SONAR_SCOPE"

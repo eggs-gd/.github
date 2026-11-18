@@ -1,0 +1,5 @@
+
+# SonarQube: the scanner's work directory, the report `make sonar` writes, the token
+.scannerwork/
+coverage/
+.env
